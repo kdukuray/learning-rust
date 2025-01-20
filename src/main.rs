@@ -20,68 +20,83 @@ enum Token{
 fn parse_string_to_int(string: &str) -> i32{
     string.trim().parse::<i32>().unwrap()
 }
+fn get_register_index(token: &Token) -> usize{
+    let mut register_index: usize = Default::default();
+    match token{
+        Token::R(index) => register_index = *index,
+        _ => println!("Error")
+    }
+    register_index
+}
 
+fn get_value_value(token: &Token) -> i32{
+    let mut value:i32 = 0;
+    match token{
+        Token::Val(value_) => value = *value_,
+        _ => println!("Error")
+    }
+    value
+}
 // This function takes in an instruction,
 //does the necessary lexical analysis and executes it
-fn execute_instruction(registers: &mut Vec<i32>, instruction: &str){
+fn execute_instruction(registers: &mut Vec<i32>, instruction: &str) -> i32{
     let tokenized_line: Vec<Token> = tokenize_line(instruction);
+    let mut exit_code: i32 = 0;
+    // if exit code is 0, do nothing
+    // if exit_code is a positive number, jump to that line
+    // if exit code is -1, if statement condition failed, jump the next line
     match tokenized_line[0]{
         Token::Add => {
-            let mut operand_1_index: usize = Default::default();
-            let mut operand_2_index: usize = Default::default();
-
-            match tokenized_line[1]{
-                Token::R(index) => operand_1_index = index,
-                _ => println!("Error!")
-            }
-            match tokenized_line[2]{
-                Token::R(index) => operand_2_index = index,
-                _ => println!("Error!")
-            }
-
-            registers[operand_1_index] = registers[operand_1_index] + registers[operand_2_index];
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            registers[operand_1_index] += registers[operand_2_index];
 
         }
         Token::Sub => {
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            registers[operand_1_index] -= registers[operand_2_index]
 
         }
         Token::Mul => {
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            registers[operand_1_index] *= registers[operand_2_index]
 
         }
         Token::Div => {
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            registers[operand_1_index] /= registers[operand_2_index]
 
         }
         Token::Set => {
-            let mut operand_1_index: usize = Default::default();
-            let mut value: i32 = Default::default();
-
-            match tokenized_line[1]{
-                Token::R(index) => operand_1_index = index,
-                _ => println!("Error!")
-            }
-
-            match tokenized_line[2]{
-                Token::Val(value_) => value = value_,
-                _ => println!("Error!")
-            }
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let value: i32 = get_value_value(&tokenized_line[2]);
 
             registers[operand_1_index] = value;
 
         }
         // How do I execute if statements?
-        Token::If => {
-
+        Token::If =>{
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let value: i32 = get_value_value(&tokenized_line[2]);
+            if registers[operand_1_index] != value {
+                exit_code = -1;
+            }
         }
         Token::Print => {
-
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            println!("{}", registers[operand_1_index]);
         }
-        // How do I implement jump statements?
         Token::Jump => {
-
+            let line_number_to_jump_to: i32 = get_value_value(&tokenized_line[1]);
+            exit_code = line_number_to_jump_to
         }
         _ => println!("Error!")
     }
     println!("Tokenized Line {:?}", tokenized_line);
+    exit_code
 }
 
 
@@ -117,6 +132,10 @@ fn tokenize(fragment: &str) -> Token{
         let register_number: usize = fragment[1..].parse::<usize>().unwrap();
         token = Token::R(register_number);
     }
+        else if fragment.to_lowercase().starts_with("v"){
+            let value: i32 = fragment[1..].parse::<i32>().unwrap();
+            token = Token::Val(value);
+        }
     else{
         token = Token::None;
     }
@@ -137,6 +156,7 @@ fn tokenize_line(instruction:&str) -> Vec<Token>{
 }
 
 fn print_registers(registers: &Vec<i32>){
+    println!("{:?}", registers);
 
 }
 
@@ -149,11 +169,30 @@ fn main(){
     let file_reader_buffer: BufReader<File> = BufReader::new(file_reference);
 
     // Register logic
-    let mut registers: Vec<i32> = Vec::new();
+    let mut registers: Vec<i32> = [0, 0, 0, 0, 0, 0, 0, 0, 0].to_vec();
 
     // loop through every line, and execute the code
-    for instruction in file_reader_buffer.lines(){
-        execute_instruction(&mut registers, &instruction.unwrap());
+
+    let mut line_index: i32 = 0;
+    let mut exit_code: i32 = 0;
+    let mut code_base: Vec<String> = Default::default();
+    for line_of_code in file_reader_buffer.lines(){
+        code_base.push(line_of_code.unwrap());
+    }
+
+    while line_index < code_base.len() as i32{
+        exit_code = execute_instruction(&mut registers, &code_base[line_index as usize]);
+        print_registers(&registers);
+
+        if exit_code > 0{
+            line_index = exit_code;
+        }
+        else if exit_code == 0{
+            line_index += 1;
+        }
+        else{
+            line_index += 2;
+        }
     }
 
 }
