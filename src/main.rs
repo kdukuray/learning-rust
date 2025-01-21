@@ -1,5 +1,7 @@
+use std::fmt::format;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::num::ParseIntError;
 
 #[derive(Default, Debug)]
 enum Token{
@@ -15,39 +17,50 @@ enum Token{
     Val(i32),
     #[default]
     None
-
 }
 
 // This functions takes in an integer as a string and
 // returns the integer representation of the string
-fn parse_string_to_int(string: &str) -> i32{
-    string.trim().parse::<i32>().unwrap()
+fn parse_string_to_int(string: &str) -> Result<i32, ParseIntError>{
+    string.trim().parse::<i32>()
 }
 
 // This function takes in a register token and
 // return the index associated with the register
-fn get_register_index(token: &Token) -> usize{
+fn get_register_index(token: &Token) -> Result<usize, String>{
     let mut register_index: usize = Default::default();
+    let mut register_index_error: bool = false;
     match token{
         Token::R(index) => register_index = *index,
-        _ => println!("Error")
+        _ => register_index_error = true
     }
-    register_index
+    if !register_index_error && register_index >= 0 && register_index < 10{
+        Ok(register_index)
+    }
+    else{
+        Err("Register index invalid! Register indexes must numbers from 0 and 9 ".to_string())
+    }
 }
 
 // This function takes in a value token and
 // return the actual numeric value associated with the value
-fn get_value_value(token: &Token) -> i32{
+fn get_value_value(token: &Token) -> Result<i32, String>{
     let mut value:i32 = 0;
+    let mut value_value_error: bool = false;
     match token{
         Token::Val(value_) => value = *value_,
-        _ => println!("Error")
+        _ => value_value_error = true
     }
-    value
+    if !value_value_error{
+        Ok(value)
+    }
+    else{
+        Err("Val' value is invalid! Value must be a number".to_string())
+    }
 }
 // This function takes in an instruction,
 //does the necessary lexical analysis and executes it
-fn execute_instruction(registers: &mut Vec<i32>, instruction: &str) -> i32{
+fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: &i32) -> i32{
     let tokenized_line: Vec<Token> = tokenize_line(instruction);
     let mut exit_code: i32 = 0;
     // if exit code is 0, do nothing ie, go to the next line of code
@@ -55,56 +68,85 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str) -> i32{
     // if exit code is -1, an if statement condition failed, skip the next line
     match tokenized_line[0]{
         Token::Add => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             registers[operand_1_index] += registers[operand_2_index];
 
         }
         Token::Sub => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             registers[operand_1_index] -= registers[operand_2_index]
 
         }
         Token::Mul => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             registers[operand_1_index] *= registers[operand_2_index]
 
         }
         Token::Div => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
+            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             registers[operand_1_index] /= registers[operand_2_index]
 
         }
         Token::Set => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
-            let value: i32 = get_value_value(&tokenized_line[2]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
+            let value: i32 = get_value_value(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             registers[operand_1_index] = value;
 
         }
         Token::If =>{
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
-            let value: i32 = get_value_value(&tokenized_line[2]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
+            let value: i32 = get_value_value(&tokenized_line[2]).unwrap_or_else(|error_msg|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             if registers[operand_1_index] != value {
                 exit_code = -1;
             }
         }
         Token::Print => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]);
+            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             println!("{}", registers[operand_1_index]);
         }
         Token::Jump => {
-            let line_number_to_jump_to: i32 = get_value_value(&tokenized_line[1]);
+            let line_number_to_jump_to: i32 = get_value_value(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
+                panic!("Error on line {}. {}", line_index, error_msg)
+            });
             exit_code = line_number_to_jump_to
         }
-        _ => println!("Error!")
+        _ => panic!("Error on line {}. Instructions must start with  one of the following \
+        Mnemonics: ADD, SUB, MUL, DIV, SET, IF, PRINT, JUMP", line_index)
     }
+    //This line is for debugging, delete later
     println!("Tokenized Line {:?}", tokenized_line);
     exit_code
 }
-
 
 // This function takes in a string
 // and returns a tokenized representation of the string based on assembly--
@@ -186,7 +228,7 @@ fn main(){
     }
 
     while line_index < code_base.len() as i32{
-        exit_code = execute_instruction(&mut registers, &code_base[line_index as usize]);
+        exit_code = execute_instruction(&mut registers, &code_base[line_index as usize], &line_index);
         print_registers(&registers);
 
         if exit_code > 0{
