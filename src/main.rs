@@ -67,67 +67,46 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: 
     // if exit_code is a positive number, jump to that line
     // if exit code is -1, an if statement condition failed, skip the next line
     match tokenized_line[0]{
-        Token::Add => {
+        Token::Add | Token::Sub | Token::Mul | Token::Div => {
             let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
                 panic!("Error on line {}. {}", line_index, error_msg)
             });
             let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
                 panic!("Error on line {}. {}", line_index, error_msg)
             });
-            registers[operand_1_index] += registers[operand_2_index];
+
+            if let Token::Add = tokenized_line[0]{
+                registers[operand_1_index] += registers[operand_2_index];
+            }
+            else if let Token::Sub = tokenized_line[0]{
+                registers[operand_1_index] -= registers[operand_2_index];
+            }
+            else if let Token::Mul = tokenized_line[0]{
+                registers[operand_1_index] *= registers[operand_2_index];
+            }
+            else if let Token::Div = tokenized_line[0]{
+                registers[operand_1_index] /= registers[operand_2_index];
+            }
 
         }
-        Token::Sub => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            registers[operand_1_index] -= registers[operand_2_index]
-
-        }
-        Token::Mul => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            registers[operand_1_index] *= registers[operand_2_index]
-
-        }
-        Token::Div => {
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            registers[operand_1_index] /= registers[operand_2_index]
-
-        }
-        Token::Set => {
+        Token::Set | Token::If => {
             let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
                 panic!("Error on line {}. {}", line_index, error_msg)
             });
             let value: i32 = get_value_value(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
                 panic!("Error on line {}. {}", line_index, error_msg)
             });
-            registers[operand_1_index] = value;
 
-        }
-        Token::If =>{
-            let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            let value: i32 = get_value_value(&tokenized_line[2]).unwrap_or_else(|error_msg|{
-                panic!("Error on line {}. {}", line_index, error_msg)
-            });
-            if registers[operand_1_index] != value {
-                exit_code = -1;
+            if let Token::Set = tokenized_line[0]{
+                registers[operand_1_index] = value;
+            }
+            else if let Token::If = tokenized_line[0]{
+                if registers[operand_1_index] != value {
+                    exit_code = -1;
+                }
             }
         }
+
         Token::Print => {
             let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
                 panic!("Error on line {}. {}", line_index, error_msg)
@@ -180,10 +159,10 @@ fn tokenize(fragment: &str) -> Token{
         let register_number: usize = fragment[1..].parse::<usize>().unwrap();
         token = Token::R(register_number);
     }
-        else if fragment.to_lowercase().starts_with("v"){
-            let value: i32 = fragment[1..].parse::<i32>().unwrap();
-            token = Token::Val(value);
-        }
+    else if fragment.to_lowercase().starts_with("v"){
+        let value: i32 = fragment[1..].parse::<i32>().unwrap();
+        token = Token::Val(value);
+    }
     else{
         token = Token::None;
     }
