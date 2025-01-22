@@ -1,4 +1,3 @@
-use std::fmt::format;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::num::ParseIntError;
@@ -55,13 +54,15 @@ fn get_value_value(token: &Token) -> Result<i32, String>{
         Ok(value)
     }
     else{
-        Err("Val' value is invalid! Value must be a number".to_string())
+        Err("Val' value is invalid! Value must be a number (32 bit integer)".to_string())
     }
 }
 // This function takes in an instruction,
 //does the necessary lexical analysis and executes it
 fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: &i32) -> i32{
-    let tokenized_line: Vec<Token> = tokenize_line(instruction);
+    let tokenized_line: Vec<Token> = tokenize_line(instruction).unwrap_or_else(|error_msg|{
+        panic!("Error on line {}. {}", line_index+1, error_msg)
+    });
     let mut exit_code: i32 = 0;
     // if exit code is 0, do nothing ie, go to the next line of code
     // if exit_code is a positive number, jump to that line
@@ -69,10 +70,10 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: 
     match tokenized_line[0]{
         Token::Add | Token::Sub | Token::Mul | Token::Div => {
             let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
+                panic!("Error on line {}. {}", line_index+1, error_msg)
             });
             let operand_2_index: usize = get_register_index(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
+                panic!("Error on line {}. {}", line_index+1, error_msg)
             });
 
             if let Token::Add = tokenized_line[0]{
@@ -91,10 +92,10 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: 
         }
         Token::Set | Token::If => {
             let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
+                panic!("Error on line {}. {}", line_index+1, error_msg)
             });
             let value: i32 = get_value_value(&tokenized_line[2]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
+                panic!("Error on line {}. {}", line_index+1, error_msg)
             });
 
             if let Token::Set = tokenized_line[0]{
@@ -109,18 +110,18 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: 
 
         Token::Print => {
             let operand_1_index: usize = get_register_index(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
+                panic!("Error on line {}. {}", line_index+1, error_msg)
             });
             println!("{}", registers[operand_1_index]);
         }
         Token::Jump => {
             let line_number_to_jump_to: i32 = get_value_value(&tokenized_line[1]).unwrap_or_else(|error_msg: String|{
-                panic!("Error on line {}. {}", line_index, error_msg)
+                panic!("Error on line {}. {}", line_index+1, error_msg)
             });
             exit_code = line_number_to_jump_to
         }
         _ => panic!("Error on line {}. Instructions must start with  one of the following \
-        Mnemonics: ADD, SUB, MUL, DIV, SET, IF, PRINT, JUMP", line_index)
+        Mnemonics: ADD, SUB, MUL, DIV, SET, IF, PRINT, JUMP", line_index+1)
     }
     //This line is for debugging, delete later
     println!("Tokenized Line {:?}", tokenized_line);
@@ -129,7 +130,7 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: 
 
 // This function takes in a string
 // and returns a tokenized representation of the string based on assembly--
-fn tokenize(fragment: &str) -> Token{
+fn tokenize(fragment: &str) -> Result<Token, ParseIntError>{
     let mut token: Token = Default::default();
     if fragment.to_lowercase() == "add"{
         token = Token::Add;
@@ -156,30 +157,40 @@ fn tokenize(fragment: &str) -> Token{
         token = Token::Jump;
     }
     else if fragment.to_lowercase().starts_with("r"){
-        let register_number: usize = fragment[1..].parse::<usize>().unwrap();
-        token = Token::R(register_number);
+        let register_index_result: Result<usize, ParseIntError> = fragment[1..].parse::<usize>();
+        match register_index_result{
+            Ok(register_index) => token = Token::R(register_index),
+            Err(err) => return Err(err)
+        }
     }
     else if fragment.to_lowercase().starts_with("v"){
-        let value: i32 = fragment[1..].parse::<i32>().unwrap();
-        token = Token::Val(value);
+        let value_result: Result<i32, ParseIntError> = fragment[1..].parse::<i32>();
+        match value_result{
+            Ok(value) => token = Token::Val(value),
+            Err(err) => return Err(err)
+        }
     }
     else{
         token = Token::None;
     }
-    token
+    Ok(token)
 
 }
 
 // This function takes in an instruction (line of code)
 // tokenizes each fragment of the instruction and returns a
 // vector of tokens representing the instruction
-fn tokenize_line(instruction:&str) -> Vec<Token>{
+fn tokenize_line(instruction:&str) -> Result<Vec<Token>, String>{
     let mut tokenized_instruction: Vec<Token> = Default::default();
     let instruction_as_vec: Vec<&str> = instruction.split(" ").collect::<Vec<&str>>();
     for fragment in instruction_as_vec.iter(){
-        tokenized_instruction.push(tokenize(fragment));
+        let tokenize_result :Result<Token, ParseIntError> = tokenize(fragment);
+        match tokenize_result{
+            Ok(token) => tokenized_instruction.push(token),
+            Err(err) => return Err(format!("\"{}\" is invalid. R and V Mnemonics must contain by a number.", fragment))
+        }
     }
-    tokenized_instruction
+    Ok(tokenized_instruction)
 }
 
 //This function prints the registers

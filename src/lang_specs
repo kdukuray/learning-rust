@@ -17,7 +17,7 @@ an implementation of a fibonacci function)
 3. Improve documentation
 4. Add more error handling
 5. Read in file name from system arguments
-6. Make the error messages better by printing the correct line that contains the error
+6. Make the error messages better by printing the correct line that contains the error {completed}
 
 Maybe
 1. Add functionality for users to be able to enter the number of registers they would like
