@@ -1,5 +1,6 @@
 SET R1 V9
 SET R2 V1
+# This is a comment
 ADD R1 R2
 IF R1 V2
 JUMP V1

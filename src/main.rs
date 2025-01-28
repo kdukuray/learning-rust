@@ -14,6 +14,7 @@ enum Token{
     Jump,
     R(usize),
     Val(i32),
+    Comment,
     #[default]
     None
 }
@@ -120,8 +121,11 @@ fn execute_instruction(registers: &mut Vec<i32>, instruction: &str, line_index: 
             });
             exit_code = line_number_to_jump_to
         }
+        Token::Comment => {
+            exit_code = 0
+        },
         _ => panic!("Error on line {}. Instructions must start with  one of the following \
-        Mnemonics: ADD, SUB, MUL, DIV, SET, IF, PRINT, JUMP", line_index+1)
+        Mnemonics: ADD, SUB, MUL, DIV, SET, IF, PRINT, JUMP, # (for comments)", line_index+1)
     }
     //This line is for debugging, delete later
     println!("Tokenized Line {:?}", tokenized_line);
@@ -155,6 +159,9 @@ fn tokenize(fragment: &str) -> Result<Token, ParseIntError>{
     }
     else if fragment.to_lowercase() == "jump"{
         token = Token::Jump;
+    }
+    else if fragment.to_lowercase().starts_with("#"){
+        token = Token::Comment;
     }
     else if fragment.to_lowercase().starts_with("r"){
         let register_index_result: Result<usize, ParseIntError> = fragment[1..].parse::<usize>();
